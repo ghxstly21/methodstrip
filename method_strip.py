@@ -1,22 +1,67 @@
 from tkinter import *
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from pathlib import Path
 from time import perf_counter
 
-SUPPORTED_LANGUAGES: tuple[str,str] = (".java", ".js")
+SUPPORTED_LANGUAGES: tuple = (".java", ".js")
+stack = []
 
-def validate_file():
-    path: str = filedialog.askopenfilename()
-    extension: str = Path(path).suffix
-    if not extension:
+
+def get_words(path: Path):
+    with open(path, "r") as original:
+        for line in original:
+            for word in line.split():
+                yield word
+
+
+def strip_with_copy(original_path: Path, new_path: Path):
+    with open(new_path, "x") as new:
+        match original_path.suffix:
+            case ".java":
+                for word in get_words(original_path):
+                    ...
+            case ".js":
+                for word in get_words(original_path):
+                    if word == "function":
+                        ...
+
+
+
+
+def strip_in_place(original_path: Path, new_path: Path):
+    ...
+
+def strip_methods(original_path: Path, save_choice : IntVar):
+    start = perf_counter()
+    match save_choice:
+        case 0:
+            new_path: Path = original_path.parent/f"{original_path.stem}_stripped{original_path.suffix}"
+            i = 2 # Number the file name if it already exists
+            while new_path.exists():
+                new_path = original_path.parent/f"{original_path.stem}_stripped{i}{original_path.suffix}"
+                i += 1
+            strip_with_copy(original_path, new_path)
+        case 1:
+            new_path: Path = original_path
+            strip_in_place(original_path, new_path)
+
+
+    end = perf_counter()
+
+    elapsed = end - start
+
+def validate_file(save_choice: IntVar):
+    path_str = filedialog.askopenfilename()
+    if not path_str:
         return
+    path: Path = Path(path_str)
+    extension: str = path.suffix
     if extension in SUPPORTED_LANGUAGES:
-        print(f"Valid! Extension is {extension}")
+        strip_methods(path, save_choice)
     else:
-        print(f"Invalid! Extension is {extension}")
-        # display error label
-
-
+        messagebox.showerror(title="Unsupported file",
+                             message="The file you uploaded wasn't a Java or JS file.\nPlease try uploading again!")
+        return
 
 def main():
     window = Tk()
@@ -45,21 +90,24 @@ def main():
 
     save_options: list[str] = ["Save as a copy in same folder as the original", "Overwrite existing file with stripped version"]
     save_choice = IntVar()
+
     for i in range(len(save_options)):
         radio_button = Radiobutton(window, text=save_options[i], variable=save_choice, value=i)
         radio_button.place(x=210, y=240 + i * 24)
-    note = Label(window,
-                 text="Note: Your stripped file will be saved as a copy in the same folder as the original",
-                 font=("Courier New", 10),
-                 bg= "white",
-                 fg="black")
-    note.place(x=210, y= 240)
 
     upload_button = Button(
         text="Upload a file...",
-        command=validate_file,
+        command=lambda: validate_file(save_choice),
         font=("Courier New", 15))
     upload_button.place(x=210, y=300)
+
+    note = Label(window,
+                 text="MethodStrip operations are reversible as long as this window is kept open.\nAlways be careful when overwriting files.",
+                 font=("Courier New", 10),
+                 bg= "white",
+                 fg="black")
+    note.place(x=210, y= 340)
+
 
     window.mainloop()
 
